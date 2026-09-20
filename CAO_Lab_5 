@@ -1,0 +1,403 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Find number of bits required */
+int findBits(int num)
+{
+    int bits = 1;
+
+    if (num < 0)
+        num = -num;
+
+    while (num > 1)
+    {
+        num = num / 2;
+        bits++;
+    }
+
+    return bits;
+}
+
+/* Convert bits to next multiple of 8 */
+int memoryBits(int bits)
+{
+    if (bits <= 8)
+        return 8;
+    else if (bits <= 16)
+        return 16;
+    else if (bits <= 24)
+        return 24;
+    else if (bits <= 32)
+        return 32;
+    else
+        return ((bits + 7) / 8) * 8;
+}
+
+/*
+ * Convert decimal number to binary.
+ *
+ * For positive numbers:
+ *      normal binary
+ *
+ * For negative numbers:
+ *      2's complement
+ */
+void dectobin(int num, int bin[], int n)
+{
+    int i;
+
+    if (num >= 0)
+    {
+        for (i = n - 1; i >= 0; i--)
+        {
+            bin[i] = num % 2;
+            num = num / 2;
+        }
+    }
+    else
+    {
+        /*
+         * First convert positive value.
+         */
+        num = -num;
+
+        for (i = n - 1; i >= 0; i--)
+        {
+            bin[i] = num % 2;
+            num = num / 2;
+        }
+
+        /*
+         * 1's complement
+         */
+        for (i = 0; i < n; i++)
+            bin[i] = 1 - bin[i];
+
+        /*
+         * Add 1
+         */
+        int carry = 1;
+
+        for (i = n - 1; i >= 0; i--)
+        {
+            int sum = bin[i] + carry;
+
+            bin[i] = sum % 2;
+            carry = sum / 2;
+        }
+    }
+}
+
+/* Print binary */
+void printbin(int bin[], int n)
+{
+    for (int i = 0; i < n; i++)
+        printf("%d", bin[i]);
+}
+
+/* A = A + M */
+void add(int A[], int M[], int n)
+{
+    int carry = 0;
+
+    for (int i = n - 1; i >= 0; i--)
+    {
+        int sum = A[i] + M[i] + carry;
+
+        A[i] = sum % 2;
+        carry = sum / 2;
+    }
+}
+
+/* A = A - M */
+void subtract(int A[], int M[], int n)
+{
+    int *temp = malloc(n * sizeof(int));
+
+    int carry = 1;
+
+    /* 1's complement */
+    for (int i = 0; i < n; i++)
+        temp[i] = 1 - M[i];
+
+    /* Add 1 */
+    for (int i = n - 1; i >= 0; i--)
+    {
+        int sum = temp[i] + carry;
+
+        temp[i] = sum % 2;
+        carry = sum / 2;
+    }
+
+    /* A = A + 2's complement of M */
+    add(A, temp, n);
+
+    free(temp);
+}
+
+/* Arithmetic right shift of A | Q | Q-1 */
+void rightshift(int A[], int Q[], int *Qi, int n)
+{
+    int oldQ0 = Q[n - 1];
+
+    /* Q0 becomes Q-1 */
+    *Qi = oldQ0;
+
+    /* Shift Q */
+    for (int i = n - 1; i > 0; i--)
+        Q[i] = Q[i - 1];
+
+    /* A's last bit enters Q */
+    Q[0] = A[n - 1];
+
+    /* Arithmetic shift A */
+    int sign = A[0];
+
+    for (int i = n - 1; i > 0; i--)
+        A[i] = A[i - 1];
+
+    A[0] = sign;
+}
+
+/*
+ * Convert binary result to decimal.
+ *
+ * result[] contains A followed by Q.
+ */
+long long binaryToDecimal(int result[], int n)
+{
+    long long value = 0;
+
+    for (int i = 0; i < n; i++)
+        value = value * 2 + result[i];
+
+    /*
+     * If first bit is 1, result is negative.
+     *
+     * Convert 2's complement to decimal.
+     */
+    if (result[0] == 1)
+    {
+        for (int i = 0; i < n; i++)
+            result[i] = 1 - result[i];
+
+        int carry = 1;
+
+        for (int i = n - 1; i >= 0; i--)
+        {
+            int sum = result[i] + carry;
+
+            result[i] = sum % 2;
+            carry = sum / 2;
+        }
+
+        value = 0;
+
+        for (int i = 0; i < n; i++)
+            value = value * 2 + result[i];
+
+        value = -value;
+    }
+
+    return value;
+}
+
+int main()
+{
+    int m, q;
+
+    printf("Enter multiplicand: ");
+    scanf("%d", &m);
+
+    printf("Enter multiplier: ");
+    scanf("%d", &q);
+
+    /*
+     * Find original number of bits.
+     */
+    int mBits = findBits(m);
+    int qBits = findBits(q);
+
+    int originalBits;
+
+    if (mBits > qBits)
+        originalBits = mBits;
+    else
+        originalBits = qBits;
+
+    /*
+     * One extra bit is needed for the sign.
+     */
+    originalBits++;
+
+    /*
+     * Convert to memory size.
+     */
+    int n = memoryBits(originalBits);
+
+    /*
+     * Display bit information.
+     */
+    printf("\n----------------------------------\n");
+    printf("Original number of bits = %d\n", originalBits);
+    printf("New number of bits      = %d\n", n);
+    printf("----------------------------------\n");
+
+    /*
+     * Create arrays.
+     */
+    int *A = calloc(n, sizeof(int));
+    int *Q = calloc(n, sizeof(int));
+    int *M = calloc(n, sizeof(int));
+
+    int Qi = 0;
+
+    /*
+     * Convert numbers to binary.
+     */
+    dectobin(m, M, n);
+    dectobin(q, Q, n);
+
+    printf("\n===============================================\n");
+    printf("           BOOTH'S ALGORITHM\n");
+    printf("===============================================\n");
+
+    printf("Multiplicand = %d\n", m);
+    printf("Multiplier   = %d\n", q);
+    printf("Original bits = %d\n", originalBits);
+    printf("Memory bits   = %d\n", n);
+
+    printf("\n");
+
+    /*
+     * Table heading.
+     */
+    printf("A");
+
+    for (int i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    Q");
+
+    for (int i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    Q-1    M");
+
+    for (int i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    Operation\n");
+
+    /*
+     * Initial values.
+     */
+    printbin(A, n);
+    printf("    ");
+
+    printbin(Q, n);
+    printf("      %d     ", Qi);
+
+    printbin(M, n);
+    printf("      Initial values\n");
+
+    /*
+     * Booth's algorithm.
+     */
+    for (int cycle = 1; cycle <= n; cycle++)
+    {
+        /*
+         *  Q0 Q-1
+         *
+         *   0  0  -> No operation
+         *   0  1  -> A = A + M
+         *   1  0  -> A = A - M
+         *   1  1  -> No operation
+         */
+
+        if (Q[n - 1] == 0 && Qi == 1)
+        {
+            add(A, M, n);
+
+            printbin(A, n);
+            printf("    ");
+            printbin(Q, n);
+            printf("      %d     ", Qi);
+            printbin(M, n);
+
+            printf("      A = A + M\n");
+        }
+        else if (Q[n - 1] == 1 && Qi == 0)
+        {
+            subtract(A, M, n);
+
+            printbin(A, n);
+            printf("    ");
+            printbin(Q, n);
+            printf("      %d     ", Qi);
+            printbin(M, n);
+
+            printf("      A = A - M\n");
+        }
+        else
+        {
+            printbin(A, n);
+            printf("    ");
+            printbin(Q, n);
+            printf("      %d     ", Qi);
+            printbin(M, n);
+
+            printf("      No operation\n");
+        }
+
+        /*
+         * Right shift.
+         */
+        rightshift(A, Q, &Qi, n);
+
+        printbin(A, n);
+        printf("    ");
+
+        printbin(Q, n);
+        printf("      %d     ", Qi);
+
+        printbin(M, n);
+
+        printf("      Shift\n");
+    }
+
+    printf("\n-----------------------------------------------\n");
+
+    /*
+     * Final result = A + Q
+     */
+    int resultSize = 2 * n;
+    int *result = malloc(resultSize * sizeof(int));
+
+    for (int i = 0; i < n; i++)
+        result[i] = A[i];
+
+    for (int i = 0; i < n; i++)
+        result[n + i] = Q[i];
+
+    printf("\nBinary Result = ");
+
+    for (int i = 0; i < resultSize; i++)
+        printf("%d", result[i]);
+
+    /*
+     * Convert result to decimal.
+     */
+    printf("\nDecimal Answer = %lld\n",
+           binaryToDecimal(result, resultSize));
+
+    /*
+     * Free memory.
+     */
+    free(A);
+    free(Q);
+    free(M);
+    free(result);
+
+    return 0;
+}
