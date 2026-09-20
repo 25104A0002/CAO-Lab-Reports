@@ -1,0 +1,465 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+/* Find number of bits required */
+int findBits(int num)
+{
+    int bits = 1;
+
+    if (num < 0)
+        num = -num;
+
+    while (num > 1)
+    {
+        num = num / 2;
+        bits++;
+    }
+
+    return bits;
+}
+
+
+/* Convert bits to next multiple of 8 */
+int memoryBits(int bits)
+{
+    if (bits <= 8)
+        return 8;
+    else if (bits <= 16)
+        return 16;
+    else if (bits <= 24)
+        return 24;
+    else if (bits <= 32)
+        return 32;
+    else
+        return ((bits + 7) / 8) * 8;
+}
+
+
+/*
+ * Convert decimal number to binary.
+ *
+ * Positive number:
+ *      Normal binary
+ *
+ * Negative number:
+ *      2's complement
+ */
+void dectobin(int num, int bin[], int n)
+{
+    int i;
+
+    if (num >= 0)
+    {
+        for (i = n - 1; i >= 0; i--)
+        {
+            bin[i] = num % 2;
+            num = num / 2;
+        }
+    }
+    else
+    {
+        num = -num;
+
+        /* Convert positive value */
+        for (i = n - 1; i >= 0; i--)
+        {
+            bin[i] = num % 2;
+            num = num / 2;
+        }
+
+        /* 1's complement */
+        for (i = 0; i < n; i++)
+            bin[i] = 1 - bin[i];
+
+        /* Add 1 */
+        int carry = 1;
+
+        for (i = n - 1; i >= 0; i--)
+        {
+            int sum = bin[i] + carry;
+
+            bin[i] = sum % 2;
+            carry = sum / 2;
+        }
+    }
+}
+
+
+/* Print binary */
+void printbin(int bin[], int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++)
+        printf("%d", bin[i]);
+}
+
+
+/*
+ * A = A + M
+ */
+void add(int A[], int M[], int n)
+{
+    int carry = 0;
+    int i;
+
+    for (i = n - 1; i >= 0; i--)
+    {
+        int sum = A[i] + M[i] + carry;
+
+        A[i] = sum % 2;
+        carry = sum / 2;
+    }
+}
+
+
+/*
+ * A = A - M
+ *
+ * Subtraction is done using
+ * 2's complement of M.
+ */
+void subtract(int A[], int M[], int n)
+{
+    int *temp;
+    int carry = 1;
+    int i;
+
+    temp = malloc(n * sizeof(int));
+
+    /* 1's complement */
+    for (i = 0; i < n; i++)
+        temp[i] = 1 - M[i];
+
+    /* Add 1 */
+    for (i = n - 1; i >= 0; i--)
+    {
+        int sum = temp[i] + carry;
+
+        temp[i] = sum % 2;
+        carry = sum / 2;
+    }
+
+    /* A = A + 2's complement of M */
+    add(A, temp, n);
+
+    free(temp);
+}
+
+
+/*
+ * Shift Left (A,Q)
+ *
+ * Example:
+ *
+ * A = 0000
+ * Q = 0111
+ *
+ * After shift:
+ *
+ * A = 0000
+ * Q = 1110
+ *
+ * Q's MSB enters A's LSB.
+ */
+void leftshift(int A[], int Q[], int n)
+{
+    int qMSB;
+    int i;
+
+    /* Save Q's MSB */
+    qMSB = Q[0];
+
+    /* Shift Q left */
+    for (i = 0; i < n - 1; i++)
+        Q[i] = Q[i + 1];
+
+    Q[n - 1] = 0;
+
+    /* Shift A left */
+    for (i = 0; i < n - 1; i++)
+        A[i] = A[i + 1];
+
+    /* Q's old MSB enters A */
+    A[n - 1] = qMSB;
+}
+
+
+/*
+ * Set Q0 = 1
+ */
+void setQ1(int Q[], int n)
+{
+    Q[n - 1] = 1;
+}
+
+
+/*
+ * Set Q0 = 0
+ */
+void setQ0(int Q[], int n)
+{
+    Q[n - 1] = 0;
+}
+
+
+/*
+ * Print one row of table
+ */
+void printRow(int step,
+              int A[],
+              int Q[],
+              int M[],
+              int n,
+              char operation[])
+{
+    printf("%-5d ", step);
+
+    printbin(A, n);
+    printf("    ");
+
+    printbin(Q, n);
+    printf("    ");
+
+    printbin(M, n);
+    printf("    ");
+
+    printf("%s\n", operation);
+}
+
+
+/*
+ * Convert positive binary array to decimal
+ */
+int binaryToDecimal(int bin[], int n)
+{
+    int value = 0;
+    int i;
+
+    for (i = 0; i < n; i++)
+        value = value * 2 + bin[i];
+
+    return value;
+}
+
+
+/*
+ * Restoring Division Algorithm
+ */
+void restoringDivision(int dividend, int divisor, int n)
+{
+    int *A;
+    int *Q;
+    int *M;
+
+    int i;
+
+    /* Create arrays */
+    A = calloc(n, sizeof(int));
+    Q = calloc(n, sizeof(int));
+    M = calloc(n, sizeof(int));
+
+    /*
+     * Q = Dividend
+     * M = Divisor
+     * A = 0
+     */
+    dectobin(dividend, Q, n);
+    dectobin(divisor, M, n);
+
+    printf("\n");
+    printf("===============================================================\n");
+    printf("             RESTORING DIVISION ALGORITHM\n");
+    printf("===============================================================\n");
+
+    printf("Dividend      = %d\n", dividend);
+    printf("Divisor       = %d\n", divisor);
+    printf("Original bits = %d\n", n);
+    printf("Memory bits   = %d\n", n);
+
+    printf("\n");
+
+    /*
+     * Table heading
+     */
+    printf("%-5s ", "Step");
+
+    printf("A");
+    for (i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    Q");
+    for (i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    M");
+    for (i = 0; i < n - 1; i++)
+        printf(" ");
+
+    printf("    Operation\n");
+
+    printf("--------------------------------------------------------------------------\n");
+
+    /*
+     * Initial values
+     */
+    printRow(0, A, Q, M, n, "Initial values");
+
+    /*
+     * Restoring Division
+     */
+    for (i = 1; i <= n; i++)
+    {
+        /*
+         * STEP 1:
+         * Shift Left (A,Q)
+         */
+        leftshift(A, Q, n);
+
+        printRow(i, A, Q, M, n, "Shift Left (A,Q)");
+
+        /*
+         * STEP 2:
+         * A = A - M
+         */
+        subtract(A, M, n);
+
+        printRow(i, A, Q, M, n, "A = A - M");
+
+        /*
+         * Check sign of A.
+         *
+         * A[0] = 1 means negative
+         * A[0] = 0 means positive
+         */
+        if (A[0] == 1)
+        {
+            /*
+             * Negative:
+             *
+             * Restore A
+             * Q0 = 0
+             */
+            add(A, M, n);
+            setQ0(Q, n);
+
+            printRow(i, A, Q, M, n,
+                     "A < 0 : Restore A = A + M, Q0 = 0");
+        }
+        else
+        {
+            /*
+             * Positive:
+             *
+             * Q0 = 1
+             */
+            setQ1(Q, n);
+
+            printRow(i, A, Q, M, n,
+                     "A >= 0 : Q0 = 1");
+        }
+
+        printf("--------------------------------------------------------------------------\n");
+    }
+
+    /*
+     * Final result
+     */
+    printf("\n===============================================================\n");
+    printf("                       RESULT\n");
+    printf("===============================================================\n");
+
+    printf("Quotient  = ");
+    printbin(Q, n);
+    printf(" = %d\n", binaryToDecimal(Q, n));
+
+    printf("Remainder = ");
+    printbin(A, n);
+    printf(" = %d\n", binaryToDecimal(A, n));
+
+    /*
+     * Free memory
+     */
+    free(A);
+    free(Q);
+    free(M);
+}
+
+
+/*
+ * MAIN
+ */
+int main()
+{
+    int dividend;
+    int divisor;
+
+    int dividendBits;
+    int divisorBits;
+    int originalBits;
+    int n;
+
+    printf("Enter dividend: ");
+    scanf("%d", &dividend);
+
+    printf("Enter divisor : ");
+    scanf("%d", &divisor);
+
+    /*
+     * Division by zero check
+     */
+    if (divisor == 0)
+    {
+        printf("\nDivision by zero is not allowed.\n");
+        return 0;
+    }
+
+    /*
+     * Restoring division normally uses
+     * positive dividend and divisor.
+     */
+    if (dividend < 0 || divisor < 0)
+    {
+        printf("\nPlease enter positive numbers only.\n");
+        return 0;
+    }
+
+    /*
+     * Find bits required
+     */
+    dividendBits = findBits(dividend);
+    divisorBits = findBits(divisor);
+
+    /*
+     * Select larger number of bits
+     */
+    if (dividendBits > divisorBits)
+        originalBits = dividendBits;
+    else
+        originalBits = divisorBits;
+
+    /*
+     * One extra bit for sign
+     */
+    originalBits++;
+
+    /*
+     * Convert to 8, 16, 24, 32...
+     */
+    n = memoryBits(originalBits);
+
+    /*
+     * Display bit information
+     */
+    printf("\n----------------------------------\n");
+    printf("Original number of bits = %d\n", originalBits);
+    printf("New number of bits      = %d\n", n);
+    printf("----------------------------------\n");
+
+    /*
+     * Call Restoring Division
+     */
+    restoringDivision(dividend, divisor, n);
+
+    return 0;
+}
