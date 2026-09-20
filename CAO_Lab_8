@@ -1,0 +1,128 @@
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <math.h>
+void printFloat(float x)
+{
+    uint32_t n;
+    memcpy(&n,&x,4);
+    for(int i=31;i>=0;i--) {
+        printf("%d",(n>>i)&1);
+        if(i==31||i==23) printf(" ");
+    }
+    printf("\n");
+}
+void printDouble(double x)
+{
+    uint64_t n;
+    memcpy(&n,&x,8);
+    for(int i=63;i>=0;i--) {
+        printf("%llu",(unsigned long long)((n>>i)&1));
+        if(i==63||i==52) printf(" ");
+    }
+    printf("\n");
+}
+float decodeFloat(char *b)
+{
+    int s=b[0]-'0',e=0;
+    float m=0,p=.5;
+    for(int i=1;i<9;i++) e=e*2+b[i]-'0';
+    for(int i=9;i<32;i++,p/=2)
+        if(b[i]=='1') m+=p;
+    if(e==255) return m==0?(s?-INFINITY:INFINITY):NAN;
+    if(e) m+=1;
+    else e=1;
+    m=ldexpf(m,e-127);
+    return s?-m:m;
+}
+double decodeDouble(char *b)
+{
+    int s=b[0]-'0',e=0;
+    double m=0,p=.5;
+    for(int i=1;i<12;i++) e=e*2+b[i]-'0';
+    for(int i=12;i<64;i++,p/=2)
+        if(b[i]=='1') m+=p;
+    if(e==2047) return m==0?(s?-INFINITY:INFINITY):NAN;
+    if(e) m+=1;
+    else e=1;
+    m=ldexp(m,e-1023);
+    return s?-m:m;
+}
+int valid(char *b,int n)
+{
+    if(strlen(b)!=n) return 0;
+    for(int i=0;i<n;i++)
+        if(b[i]!='0'&&b[i]!='1') return 0;
+    return 1;
+}
+int main()
+{
+    int ch,sub;
+    float f;
+    double d;
+    char b[65];
+    while(1)
+    {
+        printf("\n===== IEEE 754 CONVERTER =====\n");
+        printf("1. Real number in IEEE 754\n");
+        printf("2. Real number from IEEE 754\n");
+        printf("3. Exit\n");
+        printf("Enter choice: ");
+        scanf("%d",&ch);
+        if(ch==3) break;
+        if(ch==1)
+        {
+            printf("\n1. Single Precision\n");
+            printf("2. Double Precision\n");
+            printf("Enter choice: ");
+            scanf("%d",&sub);
+            if(sub==1)
+            {
+                printf("Enter real number: ");
+                scanf("%f",&f);
+                printf("IEEE 754: ");
+                printFloat(f);
+            }
+            else if(sub==2)
+            {
+                printf("Enter real number: ");
+                scanf("%lf",&d);
+                printf("IEEE 754: ");
+                printDouble(d);
+            }
+            else
+                printf("Invalid choice!\n");
+        }
+        else if(ch==2)
+        {
+            printf("\n1. Single Precision\n");
+            printf("2. Double Precision\n");
+            printf("Enter choice: ");
+            scanf("%d",&sub);
+            if(sub==1)
+            {
+                printf("Enter 32-bit IEEE 754 number: ");
+                scanf("%64s",b);
+
+                if(!valid(b,32))
+                    printf("Invalid input! Enter exactly 32 binary digits.\n");
+                else
+                    printf("Real number: %.9g\n",decodeFloat(b));
+            }
+            else if(sub==2)
+            {
+                printf("Enter 64-bit IEEE 754 number: ");
+                scanf("%64s",b);
+                if(!valid(b,64))
+                    printf("Invalid input! Enter exactly 64 binary digits.\n");
+                else
+                    printf("Real number: %.17g\n",decodeDouble(b));
+            }
+            else
+                printf("Invalid choice!\n");
+        }
+        else
+            printf("Invalid choice!\n");
+    }
+    return 0;
+}
