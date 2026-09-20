@@ -1,0 +1,152 @@
+import java.util.*;
+
+class MemorySystem {
+    static class Node {
+        long addr;
+        String data;
+        Node next;
+
+        Node(long addr, String data, Node next) {
+            this.addr = addr;
+            this.data = data;
+            this.next = next;
+        }
+    }
+
+    static Scanner sc = new Scanner(System.in);
+    static Node head = null;
+
+    static String showAddr(long a) {
+        return String.format("%04X", a);
+    }
+
+    static long memory(String s) {
+        char u = s.charAt(s.length() - 1);
+        long n;
+
+        if (u == 'K' || u == 'k' || u == 'M' || u == 'm' ||
+            u == 'G' || u == 'g') {
+
+            n = Long.parseLong(s.substring(0, s.length() - 1));
+
+            if (u == 'K' || u == 'k')
+                return n << 10;
+
+            if (u == 'M' || u == 'm')
+                return n << 20;
+
+            return n << 30;
+        }
+
+        return Long.parseLong(s);
+    }
+
+    static long address(String s) {
+        if (s.endsWith("H") || s.endsWith("h"))
+            return Long.parseLong(s.substring(0, s.length() - 1), 16);
+
+        return Long.parseLong(s);
+    }
+
+    static int lines(long n) {
+        int a = 0;
+
+        while ((1L << a) < n && a < 63)
+            a++;
+
+        return a;
+    }
+
+    public static void main(String[] args) {
+
+        System.out.println("\n========== MEMORY SYSTEM ==========");
+        System.out.println("1. Memory Support");
+        System.out.println("2. Processor Support");
+        System.out.print("Choice: ");
+
+        int ch = sc.nextInt();
+
+        long M;
+        int A;
+
+        if (ch == 1) {
+            System.out.print("Address lines: ");
+            A = sc.nextInt();
+            M = 1L << A;
+        }
+        else if (ch == 2) {
+            System.out.print("Memory size (1000/64K/2M/1G): ");
+            M = memory(sc.next());
+            A = lines(M);
+        }
+        else {
+            System.out.println("Invalid choice!");
+            return;
+        }
+
+        long first = 0, last = M - 1;
+
+        System.out.println("\nMemory Size    : " + M + " locations");
+        System.out.println("Address Lines  : " + A);
+        System.out.println("First Address  : " + showAddr(first));
+        System.out.println("Last Address   : " + showAddr(last));
+
+        while (true) {
+            System.out.print(
+                "\n[R] Read   [W] Write   [Q] Quit\nChoice: "
+            );
+
+            char op = sc.next().charAt(0);
+
+            if (op == 'Q' || op == 'q')
+                break;
+
+            System.out.print("Address: ");
+            long addr = address(sc.next());
+
+            if (addr < first || addr > last) {
+                System.out.println("Invalid address!");
+                continue;
+            }
+
+            Node p = head;
+
+            while (p != null && p.addr != addr)
+                p = p.next;
+
+            if (op == 'W' || op == 'w') {
+
+                sc.nextLine();
+                System.out.print("Data: ");
+                String data = sc.nextLine();
+
+                if (p == null) {
+                    head = new Node(addr, data, head);
+                }
+                else {
+                    p.data = data;
+                }
+
+                System.out.println(
+                    "✓ Data written at " + showAddr(addr)
+                );
+            }
+            else if (op == 'R' || op == 'r') {
+
+                System.out.println(
+                    "\nAddress : " + showAddr(addr)
+                );
+
+                System.out.println(
+                    "Data    : " +
+                    (p == null ? "No data stored" : p.data)
+                );
+            }
+            else {
+                System.out.println("Invalid operation!");
+            }
+        }
+
+        System.out.println("\n========== SYSTEM CLOSED ==========");
+    }
+}
