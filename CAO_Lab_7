@@ -1,0 +1,215 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+typedef struct Node {
+    unsigned long long address;
+    char data[100];
+    struct Node *next;
+} Node;
+
+void printAddress(unsigned long long address)
+{
+    printf("%04llXH", address);
+}
+
+int addressLines(unsigned long long memory)
+{
+    int a = 0;
+    unsigned long long x = 1;
+
+    while (x < memory) {
+        x *= 2;
+        a++;
+    }
+
+    return a;
+}
+
+unsigned long long getAddress(char input[])
+{
+    int n = strlen(input);
+
+    if (input[n - 1] == 'H' || input[n - 1] == 'h') {
+        input[n - 1] = '\0';
+        return strtoull(input, NULL, 16);
+    }
+
+    return strtoull(input, NULL, 10);
+}
+
+unsigned long long getMemory(char input[])
+{
+    unsigned long long value;
+    int n = strlen(input);
+    char unit;
+
+    if (sscanf(input, "%llu%c", &value, &unit) == 2) {
+        if (unit == 'K' || unit == 'k')
+            return value * (1ULL << 10);
+
+        if (unit == 'M' || unit == 'm')
+            return value * (1ULL << 20);
+
+        if (unit == 'G' || unit == 'g')
+            return value * (1ULL << 30);
+    }
+
+    return strtoull(input, NULL, 10);
+}
+
+int main()
+{
+    int choice, A;
+    unsigned long long M, first, last, address;
+    char input[100], data[100], op;
+
+    Node *head = NULL, *p;
+
+    printf("Press 1 for Memory Support\n");
+    printf("Press 2 for Processor Support\n");
+    printf("Enter choice: ");
+    scanf("%d", &choice);
+
+    if (choice == 1) {
+
+        printf("Enter number of address bus/lines: ");
+        scanf("%d", &A);
+
+        M = 1ULL << A;
+
+        first = 0;
+        last = M - 1;
+
+        printf("\nMemory Size = ");
+
+        if (A >= 30)
+            printf("%llu GB", M / (1ULL << 30));
+        else if (A >= 20)
+            printf("%llu MB", M / (1ULL << 20));
+        else if (A >= 10)
+            printf("%llu KB", M / (1ULL << 10));
+        else
+            printf("%llu locations", M);
+
+        printf("\nFirst Location = ");
+        printAddress(first);
+
+        printf("\nLast Location = ");
+        printAddress(last);
+        printf("\n");
+    }
+
+    else if (choice == 2) {
+
+        printf("Enter memory size ");
+        printf("(example: 1000, 64K, 2M, 1G): ");
+        scanf("%s", input);
+
+        M = getMemory(input);
+
+        if (M == 0) {
+            printf("Invalid memory size.\n");
+            return 1;
+        }
+
+        A = addressLines(M);
+
+        first = 0;
+        last = M - 1;
+
+        printf("\nMemory Size = %llu locations\n", M);
+        printf("Address Bus/Lines = %d\n", A);
+
+        printf("First Location = ");
+        printAddress(first);
+
+        printf("\nLast Location = ");
+        printAddress(last);
+        printf("\n");
+    }
+
+    else {
+        printf("Invalid choice.\n");
+        return 1;
+    }
+
+    while (1) {
+
+        printf("\nA. Read\n");
+        printf("B. Write\n");
+        printf("Q. Quit\n");
+        printf("Enter choice: ");
+        scanf(" %c", &op);
+
+        if (op == 'Q' || op == 'q')
+            break;
+
+        printf("Enter address: ");
+        scanf("%99s", input);
+
+        address = getAddress(input);
+
+        if (address < first || address > last) {
+            printf("Invalid address.\n");
+            continue;
+        }
+
+        if (op == 'B' || op == 'b') {
+
+            getchar();
+
+            printf("Enter data: ");
+            fgets(data, sizeof(data), stdin);
+            data[strcspn(data, "\n")] = '\0';
+
+            p = head;
+
+            while (p != NULL && p->address != address)
+                p = p->next;
+
+            if (p == NULL) {
+                p = malloc(sizeof(Node));
+                p->address = address;
+                p->next = head;
+                head = p;
+            }
+
+            strcpy(p->data, data);
+
+            printf("Data is written successfully at ");
+            printAddress(address);
+            printf("\n");
+        }
+
+        else if (op == 'A' || op == 'a') {
+
+            p = head;
+
+            while (p != NULL && p->address != address)
+                p = p->next;
+
+            printf("Address = ");
+            printAddress(address);
+            printf("\n");
+
+            if (p == NULL)
+                printf("Data = No data stored\n");
+            else
+                printf("Data = %s\n", p->data);
+        }
+
+        else {
+            printf("Invalid operation.\n");
+        }
+    }
+
+    while (head != NULL) {
+        p = head;
+        head = head->next;
+        free(p);
+    }
+
+    return 0;
+}
+
